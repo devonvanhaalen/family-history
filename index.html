@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family History</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui; background: linear-gradient(135deg, #f5f3f0 0%, #ede9e6 100%); min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #4a5568; padding-bottom: 30px; }
+        h1 { font-size: 36px; color: #2d3748; margin-bottom: 10px; font-weight: 300; }
+        .subtitle { font-size: 14px; color: #666; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
+        input, select { padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+        .view-buttons { display: flex; gap: 10px; margin-bottom: 30px; justify-content: center; }
+        button { padding: 10px 16px; border-radius: 6px; border: none; background: white; color: #4a5568; cursor: pointer; font-size: 13px; }
+        button.active { background: #4a5568; color: white; }
+        .count { font-size: 12px; color: #666; margin-bottom: 20px; }
+        .family-list { display: grid; gap: 16px; }
+        .person-card { background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
+        .person-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .person-header { padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+        .person-info h3 { margin: 0 0 6px 0; font-size: 16px; color: #2d3748; font-weight: 600; }
+        .person-info p { margin: 0; font-size: 12px; color: #999; }
+        .person-summary { margin: 0; font-size: 12px; color: #666; max-width: 200px; text-align: right; }
+        .person-details { display: none; padding: 16px; border-top: 1px solid #e5e0db; background: #fafbfc; font-size: 13px; line-height: 1.6; color: #555; }
+        .person-details.expanded { display: block; }
+        .person-details h4 { font-size: 12px; color: #999; margin: 12px 0 8px 0; font-weight: 600; }
+        .person-details ul { margin: 0 0 12px 0; padding-left: 20px; }
+        .person-details li { margin-bottom: 4px; }
+        .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag { background: #f0f0f0; padding: 4px 10px; border-radius: 16px; font-size: 12px; }
+        .timeline-view { display: none; }
+        .timeline-view.active { display: block; }
+        .timeline-event { padding-left: 20px; border-left: 2px solid #ccc; margin-bottom: 20px; }
+        .timeline-year { font-size: 16px; color: #2d3748; font-weight: 500; }
+        footer { margin-top: 50px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Family History</h1>
+            <p class="subtitle">Click any name to expand their story</p>
+        </header>
+        <div class="view-buttons">
+            <button class="active" onclick="setView('tree')">🌳 Tree</button>
+            <button onclick="setView('timeline')">📅 Timeline</button>
+        </div>
+        <div id="treeView">
+            <div class="controls">
+                <input type="text" id="search" placeholder="Search..." onkeyup="filterFamily()">
+                <select id="generation" onchange="filterFamily()">
+                    <option value="all">All Generations</option>
+                    <option value="0">Your Generation</option>
+                    <option value="1">Parents</option>
+                    <option value="2">Grandparents</option>
+                </select>
+            </div>
+            <div class="count"><span id="count">13</span> family members</div>
+            <div id="familyList" class="family-list"></div>
+        </div>
+        <div id="timelineView" class="timeline-view">
+            <h2>Family Timeline</h2>
+            <div id="timelineContent"></div>
+        </div>
+        <footer><p>Interactive family history | Click to explore</p></footer>
+    </div>
+    <script>
+        const familyData = [
+            { id: 'devon', name: 'Devon van Haalen', generation: 0, relation: 'You', birthYear: 1980, summary: 'Daughter of Kay and Dick.', bio: 'Devon grew up in New Zealand with a strong background in economics. Known for thoughtfulness and detail. Mother to two sons.', notable: ['Passionate about family history'], interests: ['Family history', 'Economics', 'Writing'] },
+            { id: 'caroline', name: 'Caroline Switzer-Carter', generation: 0, relation: 'Sister', birthYear: 1982, summary: 'Your sister.', bio: 'Caroline maintains family connections internationally.', notable: ['Shares family history interests'], interests: ['Travel', 'Family history'] },
+            { id: 'kay', name: 'Kay Switzer', generation: 1, relation: 'Mother', birthYear: 1941, summary: 'Family historian and genealogist.', bio: 'Kay has spent years researching and documenting family history. Strong interests in genealogy and Scottish heritage.', notable: ['Extensive genealogical research'], interests: ['Genealogy', 'Economics', 'Art'] },
+            { id: 'dick', name: 'Dick Carter', generation: 1, relation: 'Father', birthYear: 1939, summary: 'Husband of Kay. Scottish heritage.', bio: 'Dick has family ties to the Inglis family of Scotland and colonial ventures in the West Indies.', notable: ['Scottish ancestry'], interests: ['Family history', 'Photography'] },
+            { id: 'george-inglis', name: 'George Inglis', generation: 2, relation: 'Great-great-grandfather', birthYear: 1760, summary: 'Plantation owner.', bio: 'George left Scotland for the West Indies. Partnered with Suzanne Kerr. Eventually lost his fortune.', notable: ['Colonial history'], interests: ['Commerce'] },
+            { id: 'suzanne-kerr', name: 'Suzanne Kerr', generation: 2, relation: 'Great-great-grandmother', birthYear: 1765, summary: 'Free woman who prospered.', bio: 'Remarkable woman who achieved freedom and prosperity in the West Indies.', notable: ['Inspiring life story'], interests: ['Business'] },
+            { id: 'helen-inglis', name: 'Helen Inglis', generation: 1, relation: 'Great-great-grandmother', birthYear: 1800, summary: 'Daughter of George and Suzanne.', bio: 'Helen eloped at 14 with George Hepburn and had children including Emma.', notable: ['Eloped at 14'], interests: ['Family'] },
+            { id: 'george-hepburn', name: 'George Hepburn', generation: 1, relation: 'Great-great-grandfather', birthYear: 1796, summary: 'Ship master.', bio: 'George was a ship master in West Indies trade. Died in a shipwreck.', notable: ['Maritime history'], interests: ['Navigation'] },
+            { id: 'emma-brown', name: 'Emma Brown', generation: 0, relation: 'Great-great-grandmother', birthYear: 1815, summary: 'Emigrated to New Zealand.', bio: 'Emma married James Brown and emigrated to New Zealand, establishing Dick\'s family line there.', notable: ['Emigrated to NZ'], interests: ['Family'] },
+            { id: 'james-brown', name: 'James Brown', generation: 0, relation: 'Great-great-grandfather', birthYear: 1810, summary: 'Emigrated to New Zealand.', bio: 'James married Emma and emigrated to New Zealand.', notable: ['Emigrated to NZ'], interests: ['Settlement'] },
+            { id: 'alexander-inglis', name: 'Alexander Inglis', generation: 3, relation: 'Great-great-great-grandfather', birthYear: 1730, summary: 'Scottish merchant.', bio: 'Built Kingsmill estate near Inverness. Wealthy merchant class.', notable: ['Built estate'], interests: ['Commerce'] },
+            { id: 'william-inglis', name: 'William Inglis', generation: 3, relation: 'Great-great-uncle', birthYear: 1762, summary: 'Became Provost of Inverness.', bio: 'George\'s brother who stayed in Scotland. Became Provost and funded schools and hospitals.', notable: ['Civic service'], interests: ['Community'] },
+            { id: 'harvey', name: 'Harvey', generation: -1, relation: 'Son (Devon\'s)', birthYear: 2010, summary: 'Devon\'s son.', bio: 'Harvey is Devon\'s son.', notable: [], interests: ['Arts', 'Crafts'] }
+        ];
+        const timelineEvents = [
+            { year: 1730, person: 'Alexander Inglis', event: 'Born' },
+            { year: 1760, person: 'George Inglis', event: 'Born' },
+            { year: 1765, person: 'Suzanne Kerr', event: 'Born' },
+            { year: 1810, person: 'James Brown', event: 'Born' },
+            { year: 1815, person: 'Emma Brown', event: 'Born' },
+            { year: 1939, person: 'Dick Carter', event: 'Born' },
+            { year: 1941, person: 'Kay Switzer', event: 'Born' },
+            { year: 1980, person: 'Devon', event: 'Born' },
+            { year: 1982, person: 'Caroline', event: 'Born' },
+            { year: 2010, person: 'Harvey', event: 'Born' }
+        ];
+        function renderFamily() { const list = document.getElementById('familyList'); list.innerHTML = familyData.map(person => `<div class="person-card" onclick="togglePerson('${person.id}')"><div class="person-header"><div class="person-info"><h3>${person.name}</h3><p>${person.relation}${person.birthYear ? ` • b. ${person.birthYear}` : ''}</p></div><p class="person-summary">${person.summary}</p><span>▼</span></div><div class="person-details" id="details-${person.id}"><p>${person.bio}</p>${person.notable.length > 0 ? `<h4>Notable</h4><ul>${person.notable.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}${person.interests.length > 0 ? `<h4>Interests</h4><div class="tags">${person.interests.map(i => `<span class="tag">${i}</span>`).join('')}</div>` : ''}</div></div>`).join(''); }
+        function renderTimeline() { const content = document.getElementById('timelineContent'); content.innerHTML = timelineEvents.map(e => `<div class="timeline-event"><div class="timeline-year">${e.year}</div><p><strong>${e.person}:</strong> ${e.event}</p></div>`).join(''); }
+        function togglePerson(id) { document.getElementById(`details-${id}`).classList.toggle('expanded'); }
+        function filterFamily() { const search = document.getElementById('search').value.toLowerCase(); const generation = document.getElementById('generation').value; let filtered = familyData.filter(person => { const matchesSearch = person.name.toLowerCase().includes(search); const matchesGen = generation === 'all' || person.generation === parseInt(generation); return matchesSearch && matchesGen; }); document.getElementById('count').textContent = filtered.length; const list = document.getElementById('familyList'); list.innerHTML = filtered.map(person => `<div class="person-card" onclick="togglePerson('${person.id}')"><div class="person-header"><div class="person-info"><h3>${person.name}</h3><p>${person.relation}${person.birthYear ? ` • b. ${person.birthYear}` : ''}</p></div><p class="person-summary">${person.summary}</p><span>▼</span></div><div class="person-details" id="details-${person.id}"><p>${person.bio}</p>${person.notable.length > 0 ? `<h4>Notable</h4><ul>${person.notable.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}${person.interests.length > 0 ? `<h4>Interests</h4><div class="tags">${person.interests.map(i => `<span class="tag">${i}</span>`).join('')}</div>` : ''}</div></div>`).join(''); }
+        function setView(view) { const treeView = document.getElementById('treeView'); const timelineView = document.getElementById('timelineView'); document.querySelectorAll('.view-buttons button').forEach(btn => btn.classList.remove('active')); event.target.classList.add('active'); if (view === 'tree') { treeView.style.display = 'block'; timelineView.classList.remove('active'); } else { treeView.style.display = 'none'; timelineView.classList.add('active'); } }
+        renderFamily();
+        renderTimeline();
+    </script>
+</body>
+</html>
